@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: stg_matches
+    description: "One row per World Cup match, flattened from raw API JSON."
+    columns:
+      - name: match_id
+        description: "Unique match identifier from the API."
+        tests:
+          - unique
+          - not_null
+      - name: status
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['SCHEDULED', 'LIVE', 'FINISHED', 'POSTPONED', 'TIMED']
