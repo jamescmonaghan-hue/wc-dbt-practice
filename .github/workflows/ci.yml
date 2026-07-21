@@ -1,0 +1,47 @@
+# Name shown in the GitHub Actions tab for this workflow
+name: dbt CI
+
+# When this workflow should run
+on:
+  pull_request:          # only triggers on pull requests...
+    branches: [main]      # ...specifically ones targeting the main branch
+
+jobs:
+  build:                          # the name of this job (arbitrary label)
+    runs-on: ubuntu-latest         # GitHub spins up a fresh, temporary Linux VM to run this
+
+    steps:
+      # Step 1: copy your repo's code onto that fresh VM
+      # (without this, the VM would be empty — it has no access to your
+      # files unless explicitly checked out)
+      - uses: actions/checkout@v4
+
+      # Step 2: install Python on that VM, since it doesn't come with
+      # any particular version pre-installed by default
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Step 3: install the same packages your local venv has —
+      # this VM starts completely empty, so nothing is pre-installed
+      - name: Install dependencies
+        run: pip install dbt-core dbt-duckdb requests python-dotenv
+
+      # Step 4: run your ingestion script, exactly like you do locally,
+      # so the CI run works against fresh data rather than stale data
+      # left over from a previous run
+      - name: Run ingestion
+        run: python scripts/ingest.py
+        env:
+          # Injects your GitHub secret as an environment variable for
+          # this step only — this is how the script gets the API key
+          # without it ever being written into the repo itself
+          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+
+      # Step 5: the actual dbt build — runs every model and every test,
+      # in dependency order, same as running it locally
+      - name: Run dbt build
+        run: dbt build
+        # dbt commands need to run from inside the dbt project folder,
+        # not the repo root, since that's where dbt_project.yml lives
+        working-directory: wc_dbt_practice
