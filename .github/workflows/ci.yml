@@ -38,7 +38,28 @@ jobs:
           # without it ever being written into the repo itself
           FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
 
-      # Step 5: the actual dbt build — runs every model and every test,
+      # Step 5 (NEW): write a profiles.yml on the runner itself.
+      # Your local ~/.dbt/profiles.yml only exists on your own laptop —
+      # this fresh GitHub VM has no such file, so dbt has nothing to
+      # tell it how to connect to a database unless we create one here.
+      - name: Create dbt profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          wc_dbt_practice:
+            target: dev
+            outputs:
+              dev:
+                type: duckdb
+                # Relative path, not an absolute Mac path — this runner
+                # has its own filesystem layout, so we point at the
+                # warehouse file relative to where dbt build runs from
+                # (wc_dbt_practice/), one level up to the repo root
+                path: ../warehouse.duckdb
+                threads: 4
+          EOF
+
+      # Step 6: the actual dbt build — runs every model and every test,
       # in dependency order, same as running it locally
       - name: Run dbt build
         run: dbt build
